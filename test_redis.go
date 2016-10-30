@@ -1,10 +1,12 @@
 package main
 
 import (
-	"gopkg.in/redis.v5"
+	"bytes"
 	"io/ioutil"
 	"log"
 	"net/http"
+
+	"gopkg.in/redis.v5"
 )
 
 type processFunc func(string, string)
@@ -46,13 +48,39 @@ func initRedis(host string, password string, db int, poolsize int) *redis.Client
 	return client
 }
 
+func imageContentToByteArray(url string) *bytes.Reader {
+	content := getImage(url)
+	r := bytes.NewReader(content)
+	return r
+}
+
 func main() {
+	// Test redis
 	client := initRedis("localhost:6379", "", 0, 10)
 	client.Close()
+	// End test redis
+
+	// Test getImage to file
 	err := ioutil.WriteFile("Somefile.jpg", getImage("http://redis.io/images/redis-white.png"), 0644)
 
 	if err != nil {
 		log.Fatal("Could not save image", err)
+	}
+	// End test getImage to file
+
+	// Test getImage to byte.Reader
+	contentReader := imageContentToByteArray("http://redis.io/images/redis-white.png")
+
+	toWrite, err := ioutil.ReadAll(contentReader)
+
+	if err != nil {
+		log.Fatal("Could not read bytes from contentReader", err)
+	}
+
+	err = ioutil.WriteFile("file_using_bytes.Reader.png", toWrite, 0644)
+
+	if err != nil {
+		log.Fatal("Could not save image using bytes reader", err)
 	}
 
 }

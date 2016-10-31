@@ -82,5 +82,6 @@ func main() {
 	if err != nil {
 		log.Fatal("Could not save image using bytes reader", err)
 	}
+	// End test getImage to byte.Reader
 
 }

@@ -2,11 +2,12 @@ package main
 
 import (
 	"bytes"
+	"github.com/loldesign/azure"
+	"gopkg.in/redis.v5"
 	"io/ioutil"
 	"log"
 	"net/http"
-
-	"gopkg.in/redis.v5"
+	"os"
 )
 
 type processFunc func(string, string)
@@ -28,6 +29,11 @@ func getImage(url string) []byte {
 	}
 
 	return contents
+}
+
+func initAzure(acc_name string, acc_key string) azure.Azure {
+	client := azure.New(acc_name, acc_key)
+	return client
 }
 
 func initRedis(host string, password string, db int, poolsize int) *redis.Client {
@@ -60,6 +66,10 @@ func main() {
 	client.Close()
 	// End test redis
 
+	// Test Azure
+	clientAzure := initAzure(os.Getenv("AZURE_ACCOUNT"), os.Getenv("AZURE_KEY"))
+	// End test Azure
+
 	// Test getImage to file
 	err := ioutil.WriteFile("Somefile.jpg", getImage("http://redis.io/images/redis-white.png"), 0644)
 
@@ -84,4 +94,13 @@ func main() {
 	}
 	// End test getImage to byte.Reader
 
+	// Test imageContentToByteArray to azure upload
+	contentReaderAzure := imageContentToByteArray("http://redis.io/images/redis-white.png")
+	res, err := clientAzure.FileUpload("images", "test_golang.png", contentReaderAzure)
+
+	if err != nil {
+		log.Fatal("Could not upload to blob", err)
+	}
+
+	log.Println(res)
 }

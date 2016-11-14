@@ -2,13 +2,13 @@ package main
 
 import (
 	"bytes"
-	"github.com/loldesign/azure"
 	"gopkg.in/redis.v5"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+	"github.com/Azure/azure-sdk-for-go/storage"
 )
 
 var (
@@ -34,13 +34,13 @@ func getImage(url string) *bytes.Reader {
 	return r
 }
 
-func initAzure() azure.Azure {
+func initAzure() storage.Client{
 	acc_name := os.Getenv("AZURE_ACCOUNT")
 	acc_key := os.Getenv("AZURE_KEY")
 
 	log.Println("[CONFIG] Azure account name: ", acc_name)
 
-	client := azure.New(acc_name, acc_key)
+	client := storage.NewBasicClient(acc_name, acc_key)
 
 	return client
 }
@@ -80,18 +80,21 @@ func initSubscriber(client *redis.Client) *redis.PubSub {
 }
 
 func bytesToAzure(client azure.Azure, content *bytes.Reader, dest string) {
-	_, err := client.FileUpload(container, dest, content)
+	log.Println(dest)
+	resp, err := client.FileUpload(container, dest, content)
 
 	if err != nil {
 		log.Fatal("[ERROR] Could not upload image: ", err)
 	} else {
 		log.Println("[SUCCESS] Destination: ", dest)
+		log.Println(resp)
 	}
 }
 
 func getUrlAndDest(msg string) (string, string) {
 	splitted_msg := strings.Split(msg, "@@")
 	url, dest := splitted_msg[0], splitted_msg[1]
+	dest = strings.TrimPrefix(dest, "blob://")
 	return url, dest
 }
 

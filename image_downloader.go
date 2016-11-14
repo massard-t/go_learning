@@ -34,15 +34,20 @@ func getImage(url string) *bytes.Reader {
 	return r
 }
 
-func initAzure() storage.Client{
+func initAzure() storage.BlobStorageClient {
 	acc_name := os.Getenv("AZURE_ACCOUNT")
 	acc_key := os.Getenv("AZURE_KEY")
 
 	log.Println("[CONFIG] Azure account name: ", acc_name)
 
-	client := storage.NewBasicClient(acc_name, acc_key)
+	client, err := storage.NewBasicClient(acc_name, acc_key)
 
-	return client
+	if err != nil {
+		log.Fatal("[ERROR]Could not reach Azure ", err)
+	}
+
+	blob_service := client.GetBlobService()
+	return blob_service
 }
 
 func initRedis(host string, password string) *redis.Client {
@@ -79,15 +84,16 @@ func initSubscriber(client *redis.Client) *redis.PubSub {
 	return pubsub
 }
 
-func bytesToAzure(client azure.Azure, content *bytes.Reader, dest string) {
+func bytesToAzure(client storage.BlobStorageClient, content *bytes.Reader, dest string) {
 	log.Println(dest)
-	resp, err := client.FileUpload(container, dest, content)
+	m := make(map[string]string)
+	readerSize := uint64(content.Size())
+	err := client.CreateBlockBlobFromReader (container, dest, readerSize, content, m)
 
 	if err != nil {
 		log.Fatal("[ERROR] Could not upload image: ", err)
 	} else {
 		log.Println("[SUCCESS] Destination: ", dest)
-		log.Println(resp)
 	}
 }
 
@@ -98,13 +104,13 @@ func getUrlAndDest(msg string) (string, string) {
 	return url, dest
 }
 
-func makeMagicHappen(client azure.Azure, msg string) {
+func makeMagicHappen(client storage.BlobStorageClient , msg string) {
 	url, dest := getUrlAndDest(msg)
 	content := getImage(url)
 	bytesToAzure(client, content, dest)
 }
 
-func runDownloader(pubsub *redis.PubSub, blob_service azure.Azure) {
+func runDownloader(pubsub *redis.PubSub, blob_service storage.BlobStorageClient) {
 	for {
 		msg, err := pubsub.ReceiveMessage()
 

@@ -2,13 +2,13 @@ package main
 
 import (
 	"bytes"
+	"github.com/Azure/azure-sdk-for-go/storage"
 	"gopkg.in/redis.v5"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"strings"
-	"github.com/Azure/azure-sdk-for-go/storage"
 )
 
 var (
@@ -88,12 +88,16 @@ func bytesToAzure(client storage.BlobStorageClient, content *bytes.Reader, dest 
 	log.Println(dest)
 	m := make(map[string]string)
 	readerSize := uint64(content.Size())
-	err := client.CreateBlockBlobFromReader (container, dest, readerSize, content, m)
+	if readerSize != 0 {
+		err := client.CreateBlockBlobFromReader(container, dest, readerSize, content, m)
 
-	if err != nil {
-		log.Fatal("[ERROR] Could not upload image: ", err)
+		if err != nil {
+			log.Fatal("[ERROR] Could not upload image: ", err)
+		} else {
+			log.Println("[SUCCESS] Destination: ", dest)
+		}
 	} else {
-		log.Println("[SUCCESS] Destination: ", dest)
+		log.Println("[ERROR]Empty content.")
 	}
 }
 
@@ -104,7 +108,7 @@ func getUrlAndDest(msg string) (string, string) {
 	return url, dest
 }
 
-func makeMagicHappen(client storage.BlobStorageClient , msg string) {
+func makeMagicHappen(client storage.BlobStorageClient, msg string) {
 	url, dest := getUrlAndDest(msg)
 	content := getImage(url)
 	bytesToAzure(client, content, dest)

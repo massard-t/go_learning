@@ -5,10 +5,10 @@ import (
 	_ "expvar"
 	"flag"
 	"fmt"
+	"log"
 	"net/http"
 	_ "net/http/pprof"
-	"os"
-	:	"time"
+	"time"
 )
 
 // Job holds the attributes needed to perform unit of work.

@@ -9,6 +9,14 @@ import (
 	"net/http"
 	"os"
 )
+var (
+	container      = os.Getenv("AZURE_IMAGE_CONTAINER")
+	acc_name       = os.Getenv("AZURE_ACCOUNT_NAME")
+	acc_key        = os.Getenv("AZURE_ACCOUNT_KEY")
+	channel        = os.Getenv("REDIS_CHANNEL")
+	redis_host     = os.Getenv("REDIS_HOST")
+	redis_password = os.Getenv("REDIS_PASSWORD")
+)
 
 type processFunc func(string, string)
 

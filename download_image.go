@@ -13,7 +13,7 @@ import (
 )
 
 func getImage(url string) []byte {
-	fmt.Sprintf("Trying to get url: ", url)
+	fmt.Println("Trying to get url: ", url)
 
 	resp, err := http.Get(url)
 	defer resp.Body.Close()
@@ -34,19 +34,16 @@ func getImage(url string) []byte {
 func saveImage(data []byte) {
 	imageName := "picture.jpg"
 
-	fmt.Sprintf("Got %i bytes of data", len(data))
-
 	err := ioutil.WriteFile(imageName, data, 0644)
 
 	if err != nil {
 		log.Fatal("Could not save image")
 	}
 
-	fmt.Sprintf("Successfully save image %s", imageName)
 }
 
 func main() {
-	fmt.Sprintf("Test")
+	fmt.Println("Test")
 	content := getImage("https://avatars2.githubusercontent.com/u/16706490?v=3&s=88")
 	saveImage(content)
 }

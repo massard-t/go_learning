@@ -2,13 +2,15 @@ package main
 
 import (
 	"bytes"
-	"github.com/loldesign/azure"
-	"gopkg.in/redis.v5"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/Azure/azure-sdk-for-go/storage"
+	"gopkg.in/redis.v5"
 )
+
 var (
 	container      = os.Getenv("AZURE_IMAGE_CONTAINER")
 	acc_name       = os.Getenv("AZURE_ACCOUNT_NAME")
@@ -17,8 +19,6 @@ var (
 	redis_host     = os.Getenv("REDIS_HOST")
 	redis_password = os.Getenv("REDIS_PASSWORD")
 )
-
-type processFunc func(string, string)
 
 func getImage(url string) []byte {
 	log.Println("Trying to get url: ", url)
@@ -39,9 +39,14 @@ func getImage(url string) []byte {
 	return contents
 }
 
-func initAzure(acc_name string, acc_key string) azure.Azure {
-	client := azure.New(acc_name, acc_key)
-	return client
+func initAzure(acc_name string, acc_key string) storage.BlobStorageClient {
+	client, err := storage.NewBasicClient(acc_name, acc_key)
+
+	if err != nil {
+		log.Fatal("Could not reach Azure", err)
+	}
+
+	return client.GetBlobService()
 }
 
 func initRedis(host string, password string, db int, poolsize int) *redis.Client {
@@ -68,14 +73,32 @@ func imageContentToByteArray(url string) *bytes.Reader {
 	return r
 }
 
+func bytesToAzure(client storage.BlobStorageClient, content *bytes.Reader, dest string) {
+	log.Println(dest)
+	m := make(map[string]string)
+	readerSize := uint64(content.Size())
+	if readerSize != 0 {
+		err := client.CreateBlockBlobFromReader(container, dest, readerSize, content, m)
+
+		if err != nil {
+			log.Fatal("[ERROR] Could not upload image: ", err)
+		} else {
+			log.Println("[SUCCESS] Destination: ", dest)
+		}
+	} else {
+		log.Println("[ERROR]Empty content.")
+	}
+}
+
 func main() {
+	log.Println(acc_name, acc_key, container)
 	// Test redis
 	client := initRedis("localhost:6379", "", 0, 10)
 	client.Close()
 	// End test redis
 
 	// Test Azure
-	clientAzure := initAzure(os.Getenv("AZURE_ACCOUNT"), os.Getenv("AZURE_KEY"))
+	clientAzure := initAzure(acc_name, acc_key)
 	// End test Azure
 
 	// Test getImage to file
@@ -104,11 +127,12 @@ func main() {
 
 	// Test imageContentToByteArray to azure upload
 	contentReaderAzure := imageContentToByteArray("http://redis.io/images/redis-white.png")
-	res, err := clientAzure.FileUpload("images", "test_golang.png", contentReaderAzure)
+
+	bytesToAzure(clientAzure, contentReaderAzure, "test.png")
 
 	if err != nil {
 		log.Fatal("Could not upload to blob", err)
 	}
 
-	log.Println(res)
+	log.Println("Done")
 }

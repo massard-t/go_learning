@@ -131,37 +131,12 @@ func getUrlAndDest(msg string) (string, string) {
 
 func makeMagicHappen(j job) {
 	url, dest := getUrlAndDest(j.payload)
-	content := getImage(url)
-	bytesToAzure(j.azure_manager, content, dest)
+	if url != "" && dest != "" {
+		content := getImage(url)
+		bytesToAzure(j.azure_manager, content, dest)
+	}
 }
-
 func requestHandler(jobCh chan job, blob_service storage.BlobStorageClient, p string) {
-	// Make sure we can only be called with an HTTP POST request.
-	//if r.Method != "POST" {
-	//	w.Header().Set("Allow", "POST")
-	//	w.WriteHeader(http.StatusMethodNotAllowed)
-	//	return
-	//}
-
-	// Parse the durations.
-	//duration, err := time.ParseDuration(r.FormValue("delay"))
-	//if err != nil {
-	//	http.Error(w, "Bad delay value: "+err.Error(), http.StatusBadRequest)
-	//	return
-	//}
-
-	// Validate delay is in range 1 to 10 seconds.
-	//if duration.Seconds() < 1 || duration.Seconds() > 10 {
-	//	http.Error(w, "The delay must be between 1 and 10 seconds, inclusively.", http.StatusBadRequest)
-	//	return
-	//}
-
-	// Set name and validate value.
-	//name := r.FormValue("name")
-	//if name == "" {
-	//	http.Error(w, "You must specify a name.", http.StatusBadRequest)
-	//	return
-	//}
 
 	// Create Job and push the work onto the jobCh.
 	job := job{blob_service, p}
@@ -170,9 +145,12 @@ func requestHandler(jobCh chan job, blob_service storage.BlobStorageClient, p st
 		jobCh <- job
 	}()
 
-	// Render success.
-	// w.WriteHeader(http.StatusCreated)
 	return
+}
+
+func getOrder(client *redis.Client) string {
+	msg := client.RPop(channel)
+	return msg.String()
 }
 
 func main() {
@@ -183,7 +161,7 @@ func main() {
 	flag.Parse()
 
 	redis_client := initRedis(redis_host, redis_password)
-	pubsub := initSubscriber(redis_client)
+	//pubsub := initSubscriber(redis_client)
 
 	blob_service := initAzure()
 	// create job channel
@@ -202,16 +180,17 @@ func main() {
 	// handler for adding jobs
 	// HANDLE REQUESTS WITH REDIS
 	for {
-		msg, err := pubsub.ReceiveMessage()
+		msg := getOrder(redis_client)
 
-		if err != nil {
-			log.Println("[DEBUG] No message")
-		} else if msg.Payload == "kill" {
+		//	if err != nil {
+		//		log.Println("[DEBUG] No message")
+		//	} else if msg == "kill" {
+		if msg == "kill" {
 			log.Println("[INFO] Killing the Subscriber.")
 			break
 		} else {
-			log.Println(msg.Payload)
-			requestHandler(jobCh, blob_service, msg.Payload)
+			log.Println(msg)
+			requestHandler(jobCh, blob_service, msg)
 		}
 	}
 	log.Println("[INFO] Done listening, exiting Program.")

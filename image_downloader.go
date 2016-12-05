@@ -2,13 +2,14 @@ package main
 
 import (
 	"bytes"
-	"github.com/Azure/azure-sdk-for-go/storage"
-	"gopkg.in/redis.v5"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/Azure/azure-sdk-for-go/storage"
+	"gopkg.in/redis.v5"
 )
 
 var (
